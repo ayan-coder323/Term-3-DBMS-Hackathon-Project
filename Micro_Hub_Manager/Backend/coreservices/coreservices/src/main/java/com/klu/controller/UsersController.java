@@ -50,4 +50,10 @@ public class UsersController{
 	{
 		return US.getAllUsers(page, size, token);
 	}
+	
+	@PostMapping("")
+	public Object saveUser(@RequestBody Users U, @RequestHeader String Token)
+	{
+		return US.saveUser(U, Token);
+	}
 }

@@ -1,0 +1,5 @@
+package com.ticketing.ticketservice.entity;
+
+public class Users {
+
+}

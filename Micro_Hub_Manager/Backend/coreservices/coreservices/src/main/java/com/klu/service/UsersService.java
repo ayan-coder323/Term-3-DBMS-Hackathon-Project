@@ -10,7 +10,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.klu.models.Roles;
 import com.klu.models.Users;
+import com.klu.repository.RollRepository;
 import com.klu.repository.UsersRepository;
 
 @Service
@@ -21,6 +23,9 @@ public class UsersService {
 	
 	@Autowired
 	Jwtservice JWT;
+	
+	@Autowired
+	RollRepository RR;
 	public Object signup(Users U)
 	  {
 	    Map<String, Object> response = new HashMap<>();
@@ -119,14 +124,37 @@ public class UsersService {
 				Pageable pageable = PageRequest.of(page-1,size); // data domain
 				Page<Users> users = UR.findAll(pageable);
 				
+				List<Roles> roles= RR.findAll();
+				
 				response.put("code", 200);
 				response.put("page", page);
 				response.put("size", size);
 				response.put("totalpages", users.getTotalPages());
 				response.put("users", users.getContent());
+				response.put("roles", roles);
 				
 			}catch(Exception e)
 			{
+				response.put("code", 500);
+				response.put("message", e.getMessage());
+			}
+			return response;
+		}
+		
+		public Object saveUser(Users U, String token)
+		{
+			Map<String, Object> response = new HashMap<>();
+			try {
+				JWT.validateJWT(token);
+				Object id=UR.checkByEmail(U.getEmail());
+				if(id!=null)
+				{
+					throw new Exception("Email ID already registered");
+				}
+				UR.save(U);   // Insert into the database table users
+				response.put("code", 200);
+				response.put("message", "New User account has been created");
+			}catch(Exception e) {
 				response.put("code", 500);
 				response.put("message", e.getMessage());
 			}

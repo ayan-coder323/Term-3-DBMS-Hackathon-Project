@@ -1,0 +1,5 @@
+package com.ticketing.ticketservice.controller;
+
+public class UserController {
+
+}

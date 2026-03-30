@@ -10,5 +10,13 @@ class SigninSchema(BaseModel): # Predefined class for the sign in request body
     username: str
     password: str
 
+class UserSchema(BaseModel):
+    fullname: str
+    email: str
+    phone: str
+    role: int
+    status: int 
+    password: str
+
 
 
