@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useCallback } from 'react'
+import { memo, useState, useEffect, useCallback, useRef } from 'react'
 import { useApp } from '../context/AppContext'
 import Icon from '../components/Icon'
 import { Card, Spinner } from '../components/UI'
@@ -15,6 +15,13 @@ export default memo(function TasksPage() {
   const [showModal, setShowModal] = useState(false)
   const [taskData, setTaskData] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
+
+  // User dropdown state
+  const [allUsers, setAllUsers] = useState([])
+  const [userSearch, setUserSearch] = useState('')
+  const [showUserDropdown, setShowUserDropdown] = useState(false)
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const userDropdownRef = useRef(null)
 
   const loadTasks = useCallback(async (p = 0) => {
     setLoading(true)
@@ -44,6 +51,8 @@ export default memo(function TasksPage() {
 
   const handleEdit = (task) => {
     setTaskData(task)
+    const found = allUsers.find(u => u.id === task.assignedto)
+    setUserSearch(found ? found.email : '')
     setShowModal(true)
   }
 
@@ -51,8 +60,59 @@ export default memo(function TasksPage() {
     setTaskData({
       title: '', description: '', assignedto: 0, priority: 0, deadline: '', status: 0, category: 'general'
     })
+    setUserSearch('')
     setShowModal(true)
   }
+
+  // Fetch all user emails for the dropdown
+  const loadUsers = useCallback(async () => {
+    setLoadingUsers(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('http://localhost:8001/api/users/emails', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data.code === 200 && data.data) {
+        setAllUsers(data.data)
+      }
+    } catch (err) {
+      console.error('Failed to load users:', err)
+    } finally {
+      setLoadingUsers(false)
+    }
+  }, [])
+
+  // Load users when modal opens
+  useEffect(() => {
+    if (showModal) {
+      loadUsers()
+    }
+  }, [showModal, loadUsers])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(e.target)) {
+        setShowUserDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Get display text for assigned user
+  const getAssignedUserEmail = () => {
+    if (!taskData || !taskData.assignedto) return ''
+    const found = allUsers.find(u => u.id === taskData.assignedto)
+    return found ? found.email : ''
+  }
+
+  // Filter users by search query
+  const filteredUsers = allUsers.filter(u =>
+    u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+    u.username.toLowerCase().includes(userSearch.toLowerCase())
+  )
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this task?')) return
@@ -227,9 +287,63 @@ export default memo(function TasksPage() {
               <textarea style={{...inputStyle, height: 60, resize: 'none'}} value={taskData.description} onChange={e => setTaskData({...taskData, description: e.target.value})} placeholder="Task details..." />
 
               <div style={{ display: 'flex', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Assigned User ID</label>
-                  <input type="number" style={inputStyle} value={taskData.assignedto} onChange={e => setTaskData({...taskData, assignedto: e.target.value})} />
+                <div style={{ flex: 1, position: 'relative' }} ref={userDropdownRef}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Assigned to</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      style={inputStyle}
+                      value={userSearch || getAssignedUserEmail()}
+                      onChange={e => {
+                        setUserSearch(e.target.value)
+                        setShowUserDropdown(true)
+                        if (e.target.value === '') {
+                          setTaskData({...taskData, assignedto: 0})
+                        }
+                      }}
+                      onFocus={() => setShowUserDropdown(true)}
+                      placeholder="Search by email or username..."
+                      autoComplete="off"
+                    />
+                    {loadingUsers && (
+                      <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
+                        <Spinner />
+                      </div>
+                    )}
+                  </div>
+                  {showUserDropdown && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+                      background: 'var(--bg-raised)', border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-md)', maxHeight: 180, overflowY: 'auto',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.4)', marginTop: -8
+                    }}>
+                      {filteredUsers.length === 0 ? (
+                        <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>
+                          {loadingUsers ? 'Loading users...' : 'No users found'}
+                        </div>
+                      ) : filteredUsers.map(u => (
+                        <div
+                          key={u.id}
+                          onClick={() => {
+                            setTaskData({...taskData, assignedto: u.id})
+                            setUserSearch(u.email)
+                            setShowUserDropdown(false)
+                          }}
+                          style={{
+                            padding: '8px 12px', cursor: 'pointer', fontSize: 12,
+                            borderBottom: '1px solid var(--border-subtle)',
+                            transition: 'background 0.15s',
+                            background: taskData.assignedto === u.id ? 'rgba(99,102,241,0.15)' : 'transparent'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                          onMouseLeave={e => e.currentTarget.style.background = taskData.assignedto === u.id ? 'rgba(99,102,241,0.15)' : 'transparent'}
+                        >
+                          <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{u.email}</div>
+                          <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 1 }}>@{u.username}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Category</label>

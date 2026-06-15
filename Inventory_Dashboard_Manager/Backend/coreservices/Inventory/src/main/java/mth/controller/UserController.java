@@ -14,6 +14,7 @@ import mth.dto.UserUpdateDTO;
 import mth.service.UsersServices;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -34,6 +35,12 @@ public class UserController {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<UserResponseDTO> users = usersServices.getAllUsers(pageable);
         return ResponseEntity.ok(ApiResponseDTO.success(users, "Users retrieved successfully"));
+    }
+
+    @GetMapping("/emails")
+    public ResponseEntity<ApiResponseDTO<List<Map<String, Object>>>> getAllUserEmails() {
+        List<Map<String, Object>> userEmails = usersServices.getAllActiveUserEmails();
+        return ResponseEntity.ok(ApiResponseDTO.success(userEmails, "User emails retrieved successfully"));
     }
 
     @PutMapping("/{id}")

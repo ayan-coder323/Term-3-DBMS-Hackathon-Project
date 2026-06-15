@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import mth.entity.Users;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -21,4 +22,6 @@ public interface UsersRepository extends JpaRepository<Users, Long> {
 
     @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM Users u WHERE u.username = :username")
     boolean existsByUsername(@Param("username") String username);
+
+    List<Users> findAllByIsActive(Integer isActive);
 }

@@ -24,6 +24,19 @@ async def get_all_users(
     return response.json()
 
 
+@router.get("/emails")
+async def get_all_user_emails(
+    Authorization: str = Header(...)
+):
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.get(
+            SPRING_URL + "api/users/emails",
+            headers={"Authorization": Authorization}
+        )
+
+    return response.json()
+
+
 @router.put("/{user_id}")
 async def update_user(
     user_id: int,

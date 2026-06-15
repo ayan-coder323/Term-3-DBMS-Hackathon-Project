@@ -117,6 +117,20 @@ public class UsersServices {
     }
 
     /**
+     * Get all active user emails for assignment dropdowns.
+     */
+    public java.util.List<java.util.Map<String, Object>> getAllActiveUserEmails() {
+        java.util.List<Users> activeUsers = usersRepository.findAllByIsActive(1);
+        return activeUsers.stream().map(user -> {
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", user.getId());
+            map.put("email", user.getEmail());
+            map.put("username", user.getUsername());
+            return map;
+        }).collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
      * Update user role and active status.
      */
     public UserResponseDTO updateUser(Long id, UserUpdateDTO dto) {
